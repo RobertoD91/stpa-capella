@@ -30,17 +30,29 @@ on:
         options:
           - '7.0.1'
           - '7.0'
-          - '6.1'
-          - '6.0'
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 60
     strategy:
       matrix:
         capella_version:
           - '7.0.1'
       fail-fast: false
+
+    env:
+      REPO_DIR: ${{ github.workspace }}/releng/com.thalesgroup.mde.capella.stpa.update/target/repository
+      # Capella 7.0.x platform p2 repositories, mirroring the build target platform
+      # but WITHOUT the EGF and XHTML Documentation Generation add-on repositories.
+      # The core STPA feature must resolve against this set alone (clean Capella);
+      # the optional docgen feature resolves once the XHTML Documentation
+      # Generation add-on repository (ADDON_REPO) is added.
+      PLATFORM_REPOS: >-
+        https://download.eclipse.org/capella/core/updates/releases/7.0.0/org.polarsys.capella.rcp.site/,https://download.eclipse.org/kitalpha/updates/releases/runtime/7.0.1/,https://download.eclipse.org/kitalpha/updates/releases/sdk/7.0.1/,https://download.eclipse.org/sirius/updates/releases/7.4.5/2023-03,https://download.eclipse.org/modeling/amalgam/updates/releases/1.14.0/capella/,https://download.eclipse.org/modeling/gmp/gmf-runtime/updates/milestones/S202401081627,https://download.eclipse.org/modeling/gmp/gmf-notation/updates/releases/R202211151334,https://download.eclipse.org/nattable/releases/2.1.0/repository/,https://download.eclipse.org/nebula/releases/3.0.0/,https://download.eclipse.org/tools/gef/classic/releases/3.17.0,https://download.eclipse.org/diffmerge/releases/0.15.0/emf-diffmerge-site/,https://download.eclipse.org/mylyn/releases/3.26/,https://download.eclipse.org/tools/orbit/downloads/drops/R20230302014618/repository/,https://download.eclipse.org/releases/2023-03
+      # The add-on update site that the STPA update site references; it provides
+      # org.polarsys.capella.docgen and the EGF runtime required by the docgen feature.
+      ADDON_REPO: https://download.eclipse.org/capella/addons/xhtmldocgen/updates/releases/7.0.0/
 
     steps:
       - name: Checkout
@@ -69,76 +81,66 @@ jobs:
           --batch-mode
           --no-transfer-progress
 
-      - name: Validate update site with p2 director
+      - name: Validate update site structure
         run: |
-          REPO_DIR="${{ github.workspace }}/releng/com.thalesgroup.mde.capella.stpa.update/target/repository"
-
           echo "=== Update site contents ==="
-          echo "Features:"
-          ls -la "${REPO_DIR}/features/" || echo "No features directory"
+          echo "Features:" ; ls -1 "${REPO_DIR}/features/" || true
+          echo "Plugins:"  ; ls -1 "${REPO_DIR}/plugins/"  || true
           echo ""
-          echo "Plugins:"
-          ls -la "${REPO_DIR}/plugins/" || echo "No plugins directory"
+          python3 releng/com.thalesgroup.mde.capella.stpa.update/validate-repository.py "${REPO_DIR}"
 
-          # Verify that EGF bundles are present in the repository
-          echo ""
-          echo "=== Checking for EGF bundles ==="
-          if ls "${REPO_DIR}/plugins/"org.eclipse.egf.pattern_*.jar 1>/dev/null 2>&1; then
-            echo "OK: org.eclipse.egf.pattern bundle found in update site"
-          else
-            echo "ERROR: org.eclipse.egf.pattern bundle NOT found in update site"
-            exit 1
-          fi
+      - name: Verify referenced add-on repository provides the docgen dependencies
+        run: |
+          set -euo pipefail
+          ADDON="https://download.eclipse.org/capella/addons/xhtmldocgen/updates/releases/7.0.0"
+          echo "Checking ${ADDON} ..."
+          curl -sSL -o /tmp/addon-content.jar "${ADDON}/content.jar"
+          unzip -o -q /tmp/addon-content.jar -d /tmp/addon-content
+          for iu in org.eclipse.egf.pattern org.eclipse.egf.pattern.ftask org.polarsys.capella.docgen; do
+            if grep -q "id='${iu}'" /tmp/addon-content/content.xml; then
+              echo "OK: referenced add-on provides ${iu}"
+            else
+              echo "ERROR: referenced add-on does NOT provide ${iu}"
+              exit 1
+            fi
+          done
 
-          if ls "${REPO_DIR}/plugins/"org.eclipse.egf.pattern.ftask_*.jar 1>/dev/null 2>&1; then
-            echo "OK: org.eclipse.egf.pattern.ftask bundle found in update site"
-          else
-            echo "ERROR: org.eclipse.egf.pattern.ftask bundle NOT found in update site"
-            exit 1
-          fi
+      - name: Download Eclipse platform (p2 director)
+        if: github.event_name != 'pull_request'
+        run: |
+          set -euo pipefail
+          URL="https://download.eclipse.org/eclipse/downloads/drops4/R-4.27-202303020300/eclipse-platform-4.27-linux-gtk-x86_64.tar.gz"
+          curl -sSL -o /tmp/eclipse.tar.gz "${URL}"
+          tar -xzf /tmp/eclipse.tar.gz -C /tmp
 
-          # Download Eclipse SDK for p2 director
-          echo ""
-          echo "=== Downloading Eclipse SDK for p2 director ==="
-          ECLIPSE_URL="https://www.eclipse.org/downloads/download.php?file=/eclipse/downloads/drops4/R-4.27-202303020300/eclipse-SDK-4.27-linux-gtk-x86_64.tar.gz&r=1"
-          curl -sSL -o /tmp/eclipse-sdk.tar.gz "${ECLIPSE_URL}"
-          tar -xzf /tmp/eclipse-sdk.tar.gz -C /tmp
-
-          DIRECTOR="/tmp/eclipse/eclipse"
-
-          # Validate that the core STPA feature can be installed standalone
-          echo ""
-          echo "=== Validating core STPA feature installation ==="
-          ${DIRECTOR} \
+      - name: Validate clean install of CORE feature (p2 director, no docgen/EGF repos)
+        if: github.event_name != 'pull_request'
+        run: |
+          set -euo pipefail
+          /tmp/eclipse/eclipse -nosplash -consoleLog \
             -application org.eclipse.equinox.p2.director \
-            -repository "file://${REPO_DIR}" \
+            -repository "file://${REPO_DIR},${PLATFORM_REPOS}" \
             -installIU com.thalesgroup.mde.capella.stpa.feature.feature.group \
-            -destination /tmp/stpa-test-core \
-            -profile SDKProfile \
-            -roaming \
-            -p2.os linux -p2.ws gtk -p2.arch x86_64 \
-            -nosplash \
-            2>&1 || {
-              echo "WARNING: Core STPA feature installation failed (may require Capella runtime)"
-            }
+            -destination /tmp/install-core -profile STPACore \
+            -p2.os linux -p2.ws gtk -p2.arch x86_64 -roaming
+          echo "OK: core STPA feature installs on a clean Capella with no extra update site."
 
-          # Validate that docgen feature dependencies are resolvable from the update site
-          echo ""
-          echo "=== Validating docgen feature installation ==="
-          ${DIRECTOR} \
+      - name: Validate clean install of DOCGEN feature (p2 director, with the referenced add-on)
+        if: github.event_name != 'pull_request'
+        run: |
+          set -euo pipefail
+          # The Capella install wizard follows the enabled repository-reference that the
+          # update site declares (validated above by validate-repository.py), so an end
+          # user only adds the STPA update site. The p2 director CLI does not follow
+          # references, so here we add the add-on repository explicitly to prove that the
+          # docgen dependency closure (capella.docgen + EGF) is fully resolvable.
+          /tmp/eclipse/eclipse -nosplash -consoleLog \
             -application org.eclipse.equinox.p2.director \
-            -repository "file://${REPO_DIR}" \
+            -repository "file://${REPO_DIR},${PLATFORM_REPOS},${ADDON_REPO}" \
             -installIU com.thalesgroup.mde.capella.stpa.docgen.feature.feature.group \
-            -destination /tmp/stpa-test-docgen \
-            -profile SDKProfile \
-            -roaming \
-            -p2.os linux -p2.ws gtk -p2.arch x86_64 \
-            -nosplash \
-            2>&1 || {
-              echo "WARNING: Docgen feature installation failed (may require Capella runtime + XHTML Docgen addon)"
-              echo "This is expected: the docgen feature requires a Capella installation with the XHTML Docgen addon."
-              echo "The key validation is that org.eclipse.egf.pattern is NOW resolvable from the update site."
-            }
+            -destination /tmp/install-docgen -profile STPADocgen \
+            -p2.os linux -p2.ws gtk -p2.arch x86_64 -roaming
+          echo "OK: docgen feature resolves against the referenced XHTML Documentation Generation add-on."
 
       - name: Upload update site artifact
         uses: actions/upload-artifact@v4
