@@ -56,7 +56,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.m2/repository
-          key: ${{ runner.os }}-maven-capella${{ matrix.capella_version }}-${{ hashFiles('**/pom.xml', '**/capella-${{ matrix.capella_version }}.target') }}
+          key: ${{ runner.os }}-maven-capella${{ matrix.capella_version }}-${{ hashFiles('**/pom.xml', '**/capella-7.0.1.target') }}
           restore-keys: |
             ${{ runner.os }}-maven-capella${{ matrix.capella_version }}-
             ${{ runner.os }}-maven-
