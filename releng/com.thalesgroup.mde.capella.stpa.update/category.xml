@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
   Copyright (c) 2020-2024 THALES.
-  
+
   This program and the accompanying materials are made available under the
   terms of the Eclipse Public License 2.0 which is available at
   http://www.eclipse.org/legal/epl-2.0
-  
+
   SPDX-License-Identifier: EPL-2.0
 
   Contributors:
@@ -16,7 +16,7 @@
       <category name="com.thalesgroup.mde.capella.stpa.category"/>
    </feature>
    <feature url="features/com.thalesgroup.mde.capella.stpa.docgen.feature_0.2.2.qualifier.jar" id="com.thalesgroup.mde.capella.stpa.docgen.feature" version="0.2.2.qualifier">
-      <category name="com.thalesgroup.mde.capella.stpa.category"/>
+      <category name="com.thalesgroup.mde.capella.stpa.docgen.category"/>
    </feature>
    <feature id="org.eclipse.sirius.properties.feature">
       <category name="com.thalesgroup.mde.capella.stpa.dependencies"/>
@@ -27,9 +27,34 @@
    <feature id="org.eclipse.eef.ext.widgets.reference.feature">
       <category name="com.thalesgroup.mde.capella.stpa.dependencies"/>
    </feature>
-   <feature id="org.eclipse.egf.sdk.feature">
-      <category name="com.thalesgroup.mde.capella.stpa.dependencies"/>
-   </feature>
-   <category-def name="com.thalesgroup.mde.capella.stpa.category" label="STPA Add-On (Experimental)"/>
+   <category-def name="com.thalesgroup.mde.capella.stpa.category" label="STPA Add-On (Experimental)">
+      <description>
+         Core STPA viewpoint for Capella. Installs on a clean Capella installation
+         without any additional update site.
+      </description>
+   </category-def>
+   <category-def name="com.thalesgroup.mde.capella.stpa.docgen.category" label="STPA Add-On - HTML Documentation Generation (Optional)">
+      <description>
+         Optional. Extends the Capella HTML documentation generation with STPA content.
+         It requires the "Capella XHTML Documentation Generation" add-on, which provides
+         org.polarsys.capella.docgen and the Eclipse EGF runtime (org.eclipse.egf.pattern,
+         org.eclipse.egf.pattern.ftask). That add-on repository is referenced by this
+         update site (see repository-reference below) and is contacted automatically by
+         the installer as long as "Contact all update sites during install to find
+         required software" stays enabled.
+      </description>
+   </category-def>
    <category-def name="com.thalesgroup.mde.capella.stpa.dependencies" label="STPA Add-On Dependencies"/>
+   <!--
+     Repository reference that makes the optional HTML Documentation Generation feature
+     resolvable from a clean Capella installation. It points to the official Capella
+     XHTML Documentation Generation add-on update site, which is self-contained and
+     provides both org.polarsys.capella.docgen and the EGF runtime bundles required by
+     com.thalesgroup.mde.capella.stpa.docgen.feature.
+
+     NOTE FOR MAINTAINERS: this URL targets the 7.0.x add-on (the one referenced by the
+     Capella 7.0 / 7.0.1 target platforms). When releasing for a different Capella line,
+     update it to the matching xhtmldocgen add-on release.
+   -->
+   <repository-reference location="https://download.eclipse.org/capella/addons/xhtmldocgen/updates/releases/7.0.0/" name="Capella XHTML Documentation Generation" enabled="true"/>
 </site>

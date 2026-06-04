@@ -10,6 +10,13 @@ A [user guide](doc/STPA-AddOn-UserGuide.pdf) is available. Familiarity with Cape
 - Either as a dropin (for example [here](https://github.com/labs4capella/stpa-capella/releases/download/v0.1.0/STPA-dropins-capella6.1-v0.1.0.zip) for Capella 6.1). To install, simply unzip it in the capella/dropins folder of your Capella installation.
 - Or as an update site (for example [here](https://github.com/labs4capella/stpa-capella/releases/download/v0.1.0/STPA-updateSite-capella6.1-v0.1.0.zip) for Capella 6.1), which provides more compatibility guarantees if your  installation is more than just a simple, raw Capella or if you are unsure about its version. To install, follow the dedicated [instructions](https://github.com/eclipse/capella/blob/master/doc/plugins/org.polarsys.capella.ui.doc/html/Installation%20Guide/How%20to%20install%20Capella%20and%20Addons.mediawiki#update-sites).
 
+The update site exposes two categories:
+
+- **STPA Add-On (Experimental)** &mdash; the core STPA viewpoint. It installs on a clean Capella installation with no additional update site.
+- **STPA Add-On - HTML Documentation Generation (Optional)** &mdash; an optional feature that adds STPA content to the Capella HTML documentation generation. It requires the official [Capella XHTML Documentation Generation add-on](https://download.eclipse.org/capella/addons/xhtmldocgen/updates/releases/), which provides `org.polarsys.capella.docgen` and the Eclipse EGF runtime (`org.eclipse.egf.pattern`, `org.eclipse.egf.pattern.ftask`). The STPA update site references that add-on repository, so the install wizard resolves it automatically as long as **"Contact all update sites during install to find required software"** stays enabled. When using the **dropins** archive instead (which performs no dependency resolution), install the XHTML Documentation Generation add-on into your Capella beforehand.
+
+> Note: the core STPA viewpoint never depends on EGF or on the HTML documentation generation add-on. If you only need STPA modeling, install just the **STPA Add-On (Experimental)** category.
+
 </br>
 
 ![Illustration](doc/img/Samples.png "Illustration")
