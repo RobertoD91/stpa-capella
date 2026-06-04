@@ -27,6 +27,9 @@
    <feature id="org.eclipse.eef.ext.widgets.reference.feature">
       <category name="com.thalesgroup.mde.capella.stpa.dependencies"/>
    </feature>
+   <feature id="org.eclipse.egf.sdk.feature">
+      <category name="com.thalesgroup.mde.capella.stpa.dependencies"/>
+   </feature>
    <category-def name="com.thalesgroup.mde.capella.stpa.category" label="STPA Add-On (Experimental)"/>
    <category-def name="com.thalesgroup.mde.capella.stpa.dependencies" label="STPA Add-On Dependencies"/>
 </site>
