@@ -41,6 +41,10 @@
 		<capella.version>6.1</capella.version>
 		<eclipse.name>2021-06</eclipse.name>
 		<eclipse-repo.url>https://download.eclipse.org/releases/${eclipse.name}</eclipse-repo.url>
+		<!-- Capella XHTML Documentation Generation add-on update site, per Capella line.
+		     Referenced by the update site so the optional docgen feature resolves on a
+		     clean Capella. Overridden in each capella-* profile. -->
+		<docgen.addon.repo.url>https://download.eclipse.org/capella/addons/xhtmldocgen/updates/releases/6.1.0/</docgen.addon.repo.url>
 		<addonName>STPA</addonName>
 	</properties>
 
@@ -124,6 +128,7 @@
       </activation>
       <properties>
         <capella.version>5.0</capella.version>
+	  <docgen.addon.repo.url>https://download.eclipse.org/capella/addons/xhtmldocgen/updates/releases/5.0.0/</docgen.addon.repo.url>
 	  <eclipse.name>2020-06</eclipse.name>
 	  <eclipse-repo.url>https://download.eclipse.org/releases/${eclipse.name}</eclipse-repo.url>
       </properties>
@@ -135,6 +140,7 @@
       </activation>
       <properties>
         <capella.version>5.1</capella.version>
+	  <docgen.addon.repo.url>https://download.eclipse.org/capella/addons/xhtmldocgen/updates/releases/5.1.0/</docgen.addon.repo.url>
 	  <eclipse.name>2020-06</eclipse.name>
 	  <eclipse-repo.url>https://download.eclipse.org/releases/${eclipse.name}</eclipse-repo.url>
       </properties>
@@ -146,6 +152,7 @@
       </activation>
       <properties>
         <capella.version>5.2</capella.version>
+	  <docgen.addon.repo.url>https://download.eclipse.org/capella/addons/xhtmldocgen/updates/releases/5.2.0/</docgen.addon.repo.url>
 	  <eclipse.name>2020-06</eclipse.name>
 	  <eclipse-repo.url>https://download.eclipse.org/releases/${eclipse.name}</eclipse-repo.url>
       </properties>
@@ -157,6 +164,7 @@
       </activation>
       <properties>
         <capella.version>6.0</capella.version>
+	  <docgen.addon.repo.url>https://download.eclipse.org/capella/addons/xhtmldocgen/updates/releases/6.0.0/</docgen.addon.repo.url>
 	  <eclipse.name>2021-06</eclipse.name>
 	  <eclipse-repo.url>https://download.eclipse.org/releases/${eclipse.name}</eclipse-repo.url>
       </properties>
@@ -168,6 +176,7 @@
       </activation>
       <properties>
         <capella.version>6.1</capella.version>
+	  <docgen.addon.repo.url>https://download.eclipse.org/capella/addons/xhtmldocgen/updates/releases/6.1.0/</docgen.addon.repo.url>
 	  <eclipse.name>2021-06</eclipse.name>
 	  <eclipse-repo.url>https://download.eclipse.org/releases/${eclipse.name}</eclipse-repo.url>
       </properties>
@@ -179,6 +188,7 @@
       </activation>
       <properties>
         <capella.version>7.0</capella.version>
+	  <docgen.addon.repo.url>https://download.eclipse.org/capella/addons/xhtmldocgen/updates/releases/7.0.0/</docgen.addon.repo.url>
 	  <eclipse.name>2023-03</eclipse.name>
 	  <eclipse-repo.url>https://download.eclipse.org/releases/${eclipse.name}</eclipse-repo.url>
       </properties>
@@ -190,6 +200,7 @@
       </activation>
       <properties>
         <capella.version>7.0.1</capella.version>
+	  <docgen.addon.repo.url>https://download.eclipse.org/capella/addons/xhtmldocgen/updates/releases/7.0.0/</docgen.addon.repo.url>
 	  <eclipse.name>2023-03</eclipse.name>
 	  <eclipse-repo.url>https://download.eclipse.org/releases/${eclipse.name}</eclipse-repo.url>
       </properties>

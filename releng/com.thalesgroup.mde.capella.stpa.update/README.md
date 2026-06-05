@@ -26,17 +26,21 @@ are provided by the official **Capella XHTML Documentation Generation** add-on.
 Rather than re-bundling that add-on (and a second copy of EGF) into this site,
 `category.xml` declares a p2 `<repository-reference>` to the add-on update site.
 With Tycho >= 2.4.0 this emits both a metadata and an artifact reference into the
-generated `content.xml`, so the Capella install wizard (and `p2 director` with
-`-followRepositoryReferences`) resolves the docgen dependencies automatically.
+generated `content.xml`, so the Capella install wizard resolves the docgen
+dependencies automatically. (The `p2 director` CLI does not follow references, so
+when validating with it you must add the add-on repository explicitly — see below.)
 
-> Maintainers: the reference URL is pinned to the 7.0.x add-on (matching the
-> Capella 7.0 / 7.0.1 target platform). Update it when releasing for another
-> Capella line.
+> Maintainers: the reference URL in `category.xml` is only a default. At build
+> time the `rewrite-docgen-reference` step rewrites it to the add-on matching the
+> active Capella profile, taken from the `docgen.addon.repo.url` property defined
+> per `capella-*` profile in the configuration POM. A local build therefore leaves
+> `category.xml` modified — run `git checkout category.xml` to restore it.
 
 ## Build
 
 Requires JDK 17 (the Kitalpha 7.0.1 bundles declare a `JavaSE-17` execution
-environment) and Maven.
+environment) and Maven. Replace the profile to build another Capella line
+(`5.0`, `5.1`, `5.2`, `6.0`, `6.1`, `7.0`, `7.0.1`).
 
 ```bash
 # from the repository root

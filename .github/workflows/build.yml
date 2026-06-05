@@ -21,37 +21,25 @@ on:
   pull_request:
     branches: [master, main]
   workflow_dispatch:
-    inputs:
-      capella_version:
-        description: 'Capella version to build for'
-        required: false
-        default: '7.0.1'
-        type: choice
-        options:
-          - '7.0.1'
-          - '7.0'
 
 jobs:
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 60
     strategy:
-      matrix:
-        capella_version:
-          - '7.0.1'
       fail-fast: false
+      matrix:
+        capella_version: ['5.0', '5.1', '5.2', '6.0', '6.1', '7.0', '7.0.1']
 
     env:
       REPO_DIR: ${{ github.workspace }}/releng/com.thalesgroup.mde.capella.stpa.update/target/repository
       # Capella 7.0.x platform p2 repositories, mirroring the build target platform
       # but WITHOUT the EGF and XHTML Documentation Generation add-on repositories.
-      # The core STPA feature must resolve against this set alone (clean Capella);
-      # the optional docgen feature resolves once the XHTML Documentation
-      # Generation add-on repository (ADDON_REPO) is added.
+      # Used only by the 7.0.1 p2 director validation below: the core STPA feature
+      # must resolve against this set alone (clean Capella); the optional docgen
+      # feature resolves once the add-on repository (ADDON_REPO) is added.
       PLATFORM_REPOS: >-
         https://download.eclipse.org/capella/core/updates/releases/7.0.0/org.polarsys.capella.rcp.site/,https://download.eclipse.org/kitalpha/updates/releases/runtime/7.0.1/,https://download.eclipse.org/kitalpha/updates/releases/sdk/7.0.1/,https://download.eclipse.org/sirius/updates/releases/7.4.5/2023-03,https://download.eclipse.org/modeling/amalgam/updates/releases/1.14.0/capella/,https://download.eclipse.org/modeling/gmp/gmf-runtime/updates/milestones/S202401081627,https://download.eclipse.org/modeling/gmp/gmf-notation/updates/releases/R202211151334,https://download.eclipse.org/nattable/releases/2.1.0/repository/,https://download.eclipse.org/nebula/releases/3.0.0/,https://download.eclipse.org/tools/gef/classic/releases/3.17.0,https://download.eclipse.org/diffmerge/releases/0.15.0/emf-diffmerge-site/,https://download.eclipse.org/mylyn/releases/3.26/,https://download.eclipse.org/tools/orbit/downloads/drops/R20230302014618/repository/,https://download.eclipse.org/releases/2023-03
-      # The add-on update site that the STPA update site references; it provides
-      # org.polarsys.capella.docgen and the EGF runtime required by the docgen feature.
       ADDON_REPO: https://download.eclipse.org/capella/addons/xhtmldocgen/updates/releases/7.0.0/
 
     steps:
@@ -68,7 +56,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.m2/repository
-          key: ${{ runner.os }}-maven-capella${{ matrix.capella_version }}-${{ hashFiles('**/pom.xml', '**/capella-7.0.1.target') }}
+          key: ${{ runner.os }}-maven-capella${{ matrix.capella_version }}-${{ hashFiles('**/pom.xml') }}
           restore-keys: |
             ${{ runner.os }}-maven-capella${{ matrix.capella_version }}-
             ${{ runner.os }}-maven-
@@ -83,7 +71,6 @@ jobs:
 
       - name: Validate update site structure
         run: |
-          echo "=== Update site contents ==="
           echo "Features:" ; ls -1 "${REPO_DIR}/features/" || true
           echo "Plugins:"  ; ls -1 "${REPO_DIR}/plugins/"  || true
           echo ""
@@ -92,9 +79,10 @@ jobs:
       - name: Verify referenced add-on repository provides the docgen dependencies
         run: |
           set -euo pipefail
-          ADDON="https://download.eclipse.org/capella/addons/xhtmldocgen/updates/releases/7.0.0"
-          echo "Checking ${ADDON} ..."
-          curl -sSL -o /tmp/addon-content.jar "${ADDON}/content.jar"
+          unzip -p "${REPO_DIR}/content.jar" content.xml > /tmp/site-content.xml
+          ADDON=$(grep -oE "https://download\.eclipse\.org/capella/addons/xhtmldocgen/updates/releases/[0-9.]+/" /tmp/site-content.xml | head -1)
+          echo "Referenced add-on for Capella ${{ matrix.capella_version }}: ${ADDON}"
+          curl -sSL -o /tmp/addon-content.jar "${ADDON}content.jar"
           unzip -o -q /tmp/addon-content.jar -d /tmp/addon-content
           for iu in org.eclipse.egf.pattern org.eclipse.egf.pattern.ftask org.polarsys.capella.docgen; do
             if grep -q "id='${iu}'" /tmp/addon-content/content.xml; then
@@ -105,8 +93,9 @@ jobs:
             fi
           done
 
+      # --- End-to-end p2 director validation (only for 7.0.1, the primary line) ---
       - name: Download Eclipse platform (p2 director)
-        if: github.event_name != 'pull_request'
+        if: matrix.capella_version == '7.0.1' && github.event_name != 'pull_request'
         run: |
           set -euo pipefail
           URL="https://download.eclipse.org/eclipse/downloads/drops4/R-4.27-202303020300/eclipse-platform-4.27-linux-gtk-x86_64.tar.gz"
@@ -114,7 +103,7 @@ jobs:
           tar -xzf /tmp/eclipse.tar.gz -C /tmp
 
       - name: Validate clean install of CORE feature (p2 director, no docgen/EGF repos)
-        if: github.event_name != 'pull_request'
+        if: matrix.capella_version == '7.0.1' && github.event_name != 'pull_request'
         run: |
           set -euo pipefail
           /tmp/eclipse/eclipse -nosplash -consoleLog \
@@ -126,14 +115,13 @@ jobs:
           echo "OK: core STPA feature installs on a clean Capella with no extra update site."
 
       - name: Validate clean install of DOCGEN feature (p2 director, with the referenced add-on)
-        if: github.event_name != 'pull_request'
+        if: matrix.capella_version == '7.0.1' && github.event_name != 'pull_request'
         run: |
           set -euo pipefail
-          # The Capella install wizard follows the enabled repository-reference that the
-          # update site declares (validated above by validate-repository.py), so an end
-          # user only adds the STPA update site. The p2 director CLI does not follow
-          # references, so here we add the add-on repository explicitly to prove that the
-          # docgen dependency closure (capella.docgen + EGF) is fully resolvable.
+          # The Capella install wizard follows the enabled repository-reference declared by
+          # the update site (validated above). The p2 director CLI does not follow references,
+          # so we add the add-on repository explicitly to prove the docgen dependency closure
+          # (capella.docgen + EGF) is fully resolvable.
           /tmp/eclipse/eclipse -nosplash -consoleLog \
             -application org.eclipse.equinox.p2.director \
             -repository "file://${REPO_DIR},${PLATFORM_REPOS},${ADDON_REPO}" \
