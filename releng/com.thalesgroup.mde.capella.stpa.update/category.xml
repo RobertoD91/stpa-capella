@@ -52,9 +52,10 @@
      provides both org.polarsys.capella.docgen and the EGF runtime bundles required by
      com.thalesgroup.mde.capella.stpa.docgen.feature.
 
-     NOTE FOR MAINTAINERS: this URL targets the 7.0.x add-on (the one referenced by the
-     Capella 7.0 / 7.0.1 target platforms). When releasing for a different Capella line,
-     update it to the matching xhtmldocgen add-on release.
+     The location below is the default (7.0.x). At build time it is rewritten to the
+     add-on matching the active Capella profile, from the docgen.addon.repo.url property
+     (see the capella-* profiles and the rewrite-docgen-reference step in the update
+     module pom). To change it per Capella line, edit that property, not this URL.
    -->
    <repository-reference location="https://download.eclipse.org/capella/addons/xhtmldocgen/updates/releases/7.0.0/" name="Capella XHTML Documentation Generation" enabled="true"/>
 </site>

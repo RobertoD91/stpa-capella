@@ -8,8 +8,9 @@
 
 name: Release STPA Update Site
 
-# Publish a GitHub Release with the corrected update-site and dropins archives.
-# Triggered by pushing a tag like "v0.2.2", or manually for a given version.
+# Publish a GitHub Release with the corrected update-site and dropins archives
+# for every supported Capella line. Triggered by pushing a tag like "v0.2.2",
+# or manually for a given version.
 on:
   push:
     tags:
@@ -20,21 +21,36 @@ on:
         description: 'Release version, e.g. 0.2.2'
         required: true
         default: '0.2.2'
-      capella_version:
-        description: 'Capella version to build for'
-        required: false
-        default: '7.0.1'
 
 permissions:
   contents: write
 
 jobs:
-  release:
+  meta:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.ver.outputs.version }}
+    steps:
+      - name: Resolve release version
+        id: ver
+        run: |
+          set -euo pipefail
+          if [ -n "${{ github.event.inputs.version }}" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+          else
+            VERSION="${GITHUB_REF_NAME#v}"
+          fi
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "Release version: ${VERSION}"
+
+  build:
+    needs: meta
     runs-on: ubuntu-latest
     timeout-minutes: 60
-    env:
-      CAPELLA_VERSION: ${{ github.event.inputs.capella_version || '7.0.1' }}
-
+    strategy:
+      fail-fast: false
+      matrix:
+        capella_version: ['5.0', '5.1', '5.2', '6.0', '6.1', '7.0', '7.0.1']
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -49,28 +65,16 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.m2/repository
-          key: ${{ runner.os }}-maven-capella${{ env.CAPELLA_VERSION }}-${{ hashFiles('**/pom.xml', '**/capella-7.0.1.target') }}
+          key: ${{ runner.os }}-maven-capella${{ matrix.capella_version }}-${{ hashFiles('**/pom.xml') }}
           restore-keys: |
-            ${{ runner.os }}-maven-capella${{ env.CAPELLA_VERSION }}-
+            ${{ runner.os }}-maven-capella${{ matrix.capella_version }}-
             ${{ runner.os }}-maven-
-
-      - name: Resolve release version
-        id: ver
-        run: |
-          set -euo pipefail
-          if [ -n "${{ github.event.inputs.version }}" ]; then
-            VERSION="${{ github.event.inputs.version }}"
-          else
-            VERSION="${GITHUB_REF_NAME#v}"
-          fi
-          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
-          echo "Release version: ${VERSION} (Capella ${CAPELLA_VERSION})"
 
       - name: Build release artifacts
         run: >
           mvn clean package
-          -P capella-${{ env.CAPELLA_VERSION }}
-          -Drevision=${{ steps.ver.outputs.version }}-SNAPSHOT
+          -P capella-${{ matrix.capella_version }}
+          -Drevision=${{ needs.meta.outputs.version }}-SNAPSHOT
           -Declipse.p2.mirrors=false
           --batch-mode
           --no-transfer-progress
@@ -80,14 +84,10 @@ jobs:
           python3 releng/com.thalesgroup.mde.capella.stpa.update/validate-repository.py \
             releng/com.thalesgroup.mde.capella.stpa.update/target/repository
 
-      - name: Collect artifacts and checksums
-        id: collect
+      - name: Collect artifacts (strip -SNAPSHOT from file names)
         run: |
           set -euo pipefail
-          # Tycho requires a -SNAPSHOT Maven version while the OSGi versions carry
-          # the .qualifier suffix, so we build as -SNAPSHOT and drop that suffix from
-          # the published file names. The p2 content (qualifier timestamp) is identical.
-          VER="${{ steps.ver.outputs.version }}"
+          VER="${{ needs.meta.outputs.version }}"
           TGT="releng/com.thalesgroup.mde.capella.stpa.update/target"
           OUT="${{ github.workspace }}/release-artifacts"
           mkdir -p "${OUT}"
@@ -97,26 +97,51 @@ jobs:
             cp "${src}" "${OUT}/${dst}"
             echo "Packaged ${dst}"
           done
-          ( cd "${OUT}" && sha256sum STPA-*.zip > SHA256SUMS.txt && cat SHA256SUMS.txt )
-          echo "dir=${OUT}" >> "$GITHUB_OUTPUT"
+
+      - name: Upload version artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: stpa-capella${{ matrix.capella_version }}
+          path: release-artifacts/*.zip
+          if-no-files-found: error
+
+  release:
+    needs: [meta, build]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all version artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: stpa-capella*
+          path: dist
+          merge-multiple: true
+
+      - name: Checksums
+        run: |
+          set -euo pipefail
+          cd dist
+          ls -1 STPA-*.zip
+          sha256sum STPA-*.zip > SHA256SUMS.txt
+          echo "=== SHA256SUMS.txt ===" ; cat SHA256SUMS.txt
 
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v${{ steps.ver.outputs.version }}
-          name: STPA ${{ steps.ver.outputs.version }}
+          tag_name: v${{ needs.meta.outputs.version }}
+          name: STPA ${{ needs.meta.outputs.version }}
           generate_release_notes: true
           body: |
-            STPA Add-On for Capella ${{ env.CAPELLA_VERSION }} — version ${{ steps.ver.outputs.version }}.
+            STPA Add-On — version ${{ needs.meta.outputs.version }}, built for Capella 5.0, 5.1, 5.2, 6.0, 6.1, 7.0 and 7.0.1.
 
-            Installation:
-            - Add the `STPA-updateSite-capella${{ env.CAPELLA_VERSION }}-${{ steps.ver.outputs.version }}.zip` as an archived update site in "Install New Software…".
+            Pick the `updateSite` (recommended) or `dropins` archive that matches your Capella version.
+
+            Installation (update site):
+            - Add `STPA-updateSite-capella<version>-${{ needs.meta.outputs.version }}.zip` as an archived site in "Install New Software…".
             - Keep "Contact all update sites during install to find required software" enabled.
             - The core **STPA Add-On (Experimental)** category installs on a clean Capella with no extra update site.
-            - The optional **HTML Documentation Generation** category requires the official Capella XHTML Documentation Generation add-on; the update site references it, so the installer fetches it automatically (needs network access to download.eclipse.org). When using the dropins archive instead, install that add-on beforehand.
+            - The optional **HTML Documentation Generation** category requires the official Capella XHTML Documentation Generation add-on; the update site references the matching add-on, so the installer fetches it automatically (needs access to download.eclipse.org). With the dropins archive, install that add-on beforehand.
 
-            Each archive's SHA-256 is listed in `SHA256SUMS.txt`.
+            SHA-256 of every archive is in `SHA256SUMS.txt`.
           files: |
-            release-artifacts/STPA-updateSite-capella*.zip
-            release-artifacts/STPA-dropins-capella*.zip
-            release-artifacts/SHA256SUMS.txt
+            dist/STPA-*.zip
+            dist/SHA256SUMS.txt

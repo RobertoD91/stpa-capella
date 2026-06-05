@@ -92,6 +92,27 @@
 				<version>${antrun.version}</version>
 				<executions>
 					<execution>
+						<!-- Point the optional docgen feature's repository-reference at the
+						     XHTML Documentation Generation add-on matching the active Capella
+						     profile (docgen.addon.repo.url). Runs before the eclipse-repository
+						     is assembled. Rewrites category.xml in place; after a local build
+						     run `git checkout category.xml` to restore the default. -->
+						<id>rewrite-docgen-reference</id>
+						<phase>process-resources</phase>
+						<goals>
+							<goal>run</goal>
+						</goals>
+						<configuration>
+							<target>
+								<replaceregexp
+									file="${project.basedir}/category.xml"
+									match="https://download.eclipse.org/capella/addons/xhtmldocgen/updates/releases/[0-9.]+/"
+									replace="${docgen.addon.repo.url}"
+									flags="g" />
+							</target>
+						</configuration>
+					</execution>
+					<execution>
 						<id>package-dropins</id>
 						<phase>package</phase>
 						<goals>
