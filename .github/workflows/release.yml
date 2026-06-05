@@ -124,6 +124,16 @@ jobs:
           sha256sum STPA-*.zip > SHA256SUMS.txt
           echo "=== SHA256SUMS.txt ===" ; cat SHA256SUMS.txt
 
+      - name: Remove any previous release and tag (re-tag at this commit)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Make the release reproducible: drop an existing release and its tag so
+          # the tag is recreated at the commit this run was built from, instead of
+          # leaving it pinned to an older commit.
+          gh release delete "v${{ needs.meta.outputs.version }}" \
+            --repo "${{ github.repository }}" --cleanup-tag --yes || true
+
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:
